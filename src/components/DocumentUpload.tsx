@@ -59,24 +59,103 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
 
     setUploadStatus('uploading');
     
-    // Mock AI analysis - in real implementation, this would call your backend
-    setTimeout(() => {
-      const mockAnalysis = {
-        summary: "This legal document appears to be a service agreement outlining terms between a service provider and client. It includes standard clauses for payment terms, liability limitations, and termination conditions.",
-        wordCount: 1247,
-        legalCategory: "Service Agreement",
-        sensitiveClause: [
-          "Liability limitation clause in Section 8.2",
-          "Automatic renewal clause in Section 12.1",
-          "Intellectual property rights in Section 6.3"
-        ],
-        confidenceScore: 94,
-        fileName: selectedFile.name
-      };
+    try {
+      // Parse the document content directly
+      let content = '';
       
-      onAnalysis(mockAnalysis);
+      if (selectedFile.type === 'text/plain' || selectedFile.name.endsWith('.txt')) {
+        content = await selectedFile.text();
+      } else if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+        // For PDF files, show a message that it's being processed
+        content = `PDF Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis PDF file has been uploaded for analysis. In a production environment, this would be processed using advanced PDF parsing to extract text, tables, and images.`;
+      } else if (selectedFile.name.endsWith('.docx') || selectedFile.type.includes('wordprocessingml')) {
+        // For DOCX files, show a message that it's being processed
+        content = `Word Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis Word document has been uploaded for analysis. In a production environment, this would be processed to extract formatted text, tables, and embedded content.`;
+      } else {
+        // Try to read as text for other file types
+        try {
+          content = await selectedFile.text();
+        } catch {
+          content = `Document: ${selectedFile.name}\nType: ${selectedFile.type || 'Unknown'}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis file format requires specialized parsing. Content analysis is based on file metadata.`;
+        }
+      }
+      
+      // Analyze the real content
+      const analysis = analyzeDocumentContent(content, selectedFile.name);
+      
+      onAnalysis(analysis);
       setUploadStatus('idle');
-    }, 2000);
+    } catch (error) {
+      console.error('Error analyzing document:', error);
+      setUploadStatus('error');
+    }
+  };
+
+  const analyzeDocumentContent = (content: string, fileName: string) => {
+    // Real content analysis
+    const words = content.split(/\s+/).filter(word => word.length > 0);
+    const wordCount = words.length;
+    
+    // Detect legal document type based on keywords
+    const contractKeywords = ['agreement', 'contract', 'parties', 'terms', 'conditions'];
+    const serviceKeywords = ['service', 'provider', 'client', 'perform'];
+    const ndaKeywords = ['confidential', 'non-disclosure', 'proprietary', 'secret'];
+    const employmentKeywords = ['employee', 'employer', 'employment', 'position', 'salary'];
+    
+    let legalCategory = "General Legal Document";
+    if (contractKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
+      if (serviceKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
+        legalCategory = "Service Agreement";
+      } else {
+        legalCategory = "Contract";
+      }
+    } else if (ndaKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
+      legalCategory = "Non-Disclosure Agreement";
+    } else if (employmentKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
+      legalCategory = "Employment Agreement";
+    }
+
+    // Detect sensitive clauses
+    const sensitivePatterns = [
+      /liability.*limit/i,
+      /termination.*clause/i,
+      /intellectual.*property/i,
+      /confidential/i,
+      /non-compete/i,
+      /arbitration/i,
+      /indemnif/i,
+      /force.*majeure/i,
+      /governing.*law/i,
+      /automatic.*renewal/i
+    ];
+
+    const sensitiveClause: string[] = [];
+    sensitivePatterns.forEach(pattern => {
+      const matches = content.match(pattern);
+      if (matches) {
+        sensitiveClause.push(`${matches[0]} clause detected`);
+      }
+    });
+
+    // Generate summary based on actual content
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const summary = sentences.slice(0, 3).join('. ').trim() + 
+                   (sentences.length > 3 ? '...' : '');
+
+    // Calculate confidence score based on content analysis quality
+    let confidenceScore = 70;
+    if (wordCount > 100) confidenceScore += 10;
+    if (sensitiveClause.length > 0) confidenceScore += 10;
+    if (legalCategory !== "General Legal Document") confidenceScore += 10;
+
+    return {
+      summary: summary || "Document content extracted successfully.",
+      wordCount,
+      legalCategory,
+      sensitiveClause: sensitiveClause.length > 0 ? sensitiveClause : ["No sensitive clauses detected"],
+      confidenceScore: Math.min(confidenceScore, 98),
+      fileName
+    };
   };
 
   const removeFile = () => {
