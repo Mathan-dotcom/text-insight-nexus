@@ -29,23 +29,27 @@ const Index = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/upload">
-                <Button 
-                  variant="professional" 
-                  size="lg"
-                  className="px-8 py-4 text-lg"
-                >
+              <Button 
+                variant="professional" 
+                size="lg"
+                className="px-8 py-4 text-lg"
+                asChild
+              >
+                <Link to="/upload">
                   <FileSearch className="mr-2 h-5 w-5" />
                   Analyze Document
                   <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <Button 
                 variant="outline" 
                 size="lg"
                 className="px-8 py-4 text-lg border-primary/20 hover:border-primary"
+                asChild
               >
-                View Demo
+                <Link to="/upload">
+                  View Demo
+                </Link>
               </Button>
             </div>
           </div>
@@ -116,16 +120,17 @@ const Index = () => {
                 Join thousands of legal professionals who trust our AI-powered analysis for faster, 
                 more accurate document review.
               </p>
-              <Link to="/upload">
-                <Button 
-                  variant="professional"
-                  size="lg"
-                  className="px-8 py-4 text-lg"
-                >
+              <Button 
+                variant="professional"
+                size="lg"
+                className="px-8 py-4 text-lg"
+                asChild
+              >
+                <Link to="/upload">
                   <FileSearch className="mr-2 h-5 w-5" />
                   Start Analysis Now
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
