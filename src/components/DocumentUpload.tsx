@@ -14,6 +14,7 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -36,37 +37,39 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
     }
   };
 
-  const handleFileSelect = (file: File) => {
-    const allowedExtensions = ['.txt', '.pdf', '.docx'];
-    const allowedMimeTypes = [
-      'text/plain',
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword'
-    ];
-    
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    const isValidExtension = allowedExtensions.includes(fileExtension);
-    const isValidMimeType = allowedMimeTypes.includes(file.type);
-    
-    if (!isValidExtension && !isValidMimeType) {
-      console.log('File validation failed:', { 
-        fileName: file.name, 
-        extension: fileExtension, 
-        mimeType: file.type 
-      });
-      setUploadStatus('error');
-      return;
-    }
-
-    console.log('File accepted:', { 
+const handleFileSelect = (file: File) => {
+  const allowedExtensions = ['.txt', '.pdf', '.docx'];
+  const allowedMimeTypes = [
+    'text/plain',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword'
+  ];
+  
+  const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+  const isValidExtension = allowedExtensions.includes(fileExtension);
+  const isValidMimeType = allowedMimeTypes.includes(file.type);
+  
+  if (!isValidExtension && !isValidMimeType) {
+    console.log('File validation failed:', { 
       fileName: file.name, 
       extension: fileExtension, 
       mimeType: file.type 
     });
-    setSelectedFile(file);
-    setUploadStatus('success');
-  };
+    setErrorMessage(`Unsupported file type: ${fileExtension || 'unknown'}. Please upload TXT, PDF, or DOCX.`);
+    setUploadStatus('error');
+    return;
+  }
+
+  console.log('File accepted:', { 
+    fileName: file.name, 
+    extension: fileExtension, 
+    mimeType: file.type 
+  });
+  setErrorMessage(null);
+  setSelectedFile(file);
+  setUploadStatus('success');
+};
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -165,20 +168,22 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
       
       onAnalysis(aiData.analysis);
       setUploadStatus('idle');
-    } catch (error) {
-      console.error('Error analyzing document:', error);
-      setUploadStatus('error');
-    }
+  } catch (error) {
+    console.error('Error analyzing document:', error);
+    setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze document');
+    setUploadStatus('error');
+  }
   };
 
 
-  const removeFile = () => {
-    setSelectedFile(null);
-    setUploadStatus('idle');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+const removeFile = () => {
+  setSelectedFile(null);
+  setUploadStatus('idle');
+  setErrorMessage(null);
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+  }
+};
 
   const getStatusIcon = () => {
     switch (uploadStatus) {
@@ -284,13 +289,13 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
           </div>
         </div>
 
-        {uploadStatus === 'error' && (
-          <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <p className="text-sm text-destructive font-medium">
-              Please upload a valid document file (TXT, PDF, or DOCX)
-            </p>
-          </div>
-        )}
+{uploadStatus === 'error' && (
+  <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+    <p className="text-sm text-destructive font-medium">
+      {errorMessage ?? 'Please upload a valid document file (TXT, PDF, or DOCX)'}
+    </p>
+  </div>
+)}
       </CardContent>
     </Card>
   );
