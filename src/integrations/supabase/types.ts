@@ -14,39 +14,318 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_results: {
+        Row: {
+          analysis_type: string
+          confidence_score: number | null
+          created_at: string | null
+          document_id: number | null
+          id: string
+          result_data: Json
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          analysis_type: string
+          confidence_score?: number | null
+          created_at?: string | null
+          document_id?: number | null
+          id?: string
+          result_data?: Json
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          document_id?: number | null
+          id?: string
+          result_data?: Json
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          message_type: string | null
+          metadata: Json | null
+          role: string
+          session_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          role: string
+          session_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          role?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string | null
+          document_id: number | null
+          id: string
+          personality_mode: string | null
+          session_data: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_id?: number | null
+          id?: string
+          personality_mode?: string | null
+          session_data?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: number | null
+          id?: string
+          personality_mode?: string | null
+          session_data?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clause_explanations: {
+        Row: {
+          clause_pattern: string
+          clause_type: string
+          created_at: string | null
+          explanation: string
+          id: string
+          risk_level: string | null
+          scenario_example: string | null
+        }
+        Insert: {
+          clause_pattern: string
+          clause_type: string
+          created_at?: string | null
+          explanation: string
+          id?: string
+          risk_level?: string | null
+          scenario_example?: string | null
+        }
+        Update: {
+          clause_pattern?: string
+          clause_type?: string
+          created_at?: string | null
+          explanation?: string
+          id?: string
+          risk_level?: string | null
+          scenario_example?: string | null
+        }
+        Relationships: []
+      }
+      community_benchmarks: {
+        Row: {
+          category: string
+          geography: string | null
+          id: string
+          last_updated: string | null
+          metric_name: string
+          metric_value: number | null
+          percentile_25: number | null
+          percentile_50: number | null
+          percentile_75: number | null
+          percentile_90: number | null
+          sample_size: number | null
+        }
+        Insert: {
+          category: string
+          geography?: string | null
+          id?: string
+          last_updated?: string | null
+          metric_name: string
+          metric_value?: number | null
+          percentile_25?: number | null
+          percentile_50?: number | null
+          percentile_75?: number | null
+          percentile_90?: number | null
+          sample_size?: number | null
+        }
+        Update: {
+          category?: string
+          geography?: string | null
+          id?: string
+          last_updated?: string | null
+          metric_name?: string
+          metric_value?: number | null
+          percentile_25?: number | null
+          percentile_50?: number | null
+          percentile_75?: number | null
+          percentile_90?: number | null
+          sample_size?: number | null
+        }
+        Relationships: []
+      }
+      contract_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          fairness_score: number | null
+          id: string
+          is_verified: boolean | null
+          name: string
+          tags: string[] | null
+          template_content: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fairness_score?: number | null
+          id?: string
+          is_verified?: boolean | null
+          name: string
+          tags?: string[] | null
+          template_content: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fairness_score?: number | null
+          id?: string
+          is_verified?: boolean | null
+          name?: string
+          tags?: string[] | null
+          template_content?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           bucket: string
           created_at: string | null
+          document_type: string | null
+          ethics_fairness_score: number | null
           external_id: string
           file_name: string | null
+          financial_fairness_score: number | null
           id: number
+          important_dates: Json | null
+          key_clauses: Json | null
+          legal_liability_score: number | null
           metadata: Json | null
+          obligations: Json | null
+          page_count: number | null
+          parsed_content: string | null
           path: string
+          privacy_data_score: number | null
+          processing_status: string | null
+          rights_shield_score: number | null
+          risk_factors: Json | null
           size: number | null
+          termination_flexibility_score: number | null
           user_id: string | null
+          word_count: number | null
         }
         Insert: {
           bucket?: string
           created_at?: string | null
+          document_type?: string | null
+          ethics_fairness_score?: number | null
           external_id?: string
           file_name?: string | null
+          financial_fairness_score?: number | null
           id?: never
+          important_dates?: Json | null
+          key_clauses?: Json | null
+          legal_liability_score?: number | null
           metadata?: Json | null
+          obligations?: Json | null
+          page_count?: number | null
+          parsed_content?: string | null
           path: string
+          privacy_data_score?: number | null
+          processing_status?: string | null
+          rights_shield_score?: number | null
+          risk_factors?: Json | null
           size?: number | null
+          termination_flexibility_score?: number | null
           user_id?: string | null
+          word_count?: number | null
         }
         Update: {
           bucket?: string
           created_at?: string | null
+          document_type?: string | null
+          ethics_fairness_score?: number | null
           external_id?: string
           file_name?: string | null
+          financial_fairness_score?: number | null
           id?: never
+          important_dates?: Json | null
+          key_clauses?: Json | null
+          legal_liability_score?: number | null
           metadata?: Json | null
+          obligations?: Json | null
+          page_count?: number | null
+          parsed_content?: string | null
           path?: string
+          privacy_data_score?: number | null
+          processing_status?: string | null
+          rights_shield_score?: number | null
+          risk_factors?: Json | null
           size?: number | null
+          termination_flexibility_score?: number | null
           user_id?: string | null
+          word_count?: number | null
         }
         Relationships: []
       }
