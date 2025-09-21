@@ -37,14 +37,33 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
   };
 
   const handleFileSelect = (file: File) => {
-    const allowedTypes = ['.txt', '.pdf', '.docx'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['.txt', '.pdf', '.docx'];
+    const allowedMimeTypes = [
+      'text/plain',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
     
-    if (!allowedTypes.includes(fileExtension)) {
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const isValidExtension = allowedExtensions.includes(fileExtension);
+    const isValidMimeType = allowedMimeTypes.includes(file.type);
+    
+    if (!isValidExtension && !isValidMimeType) {
+      console.log('File validation failed:', { 
+        fileName: file.name, 
+        extension: fileExtension, 
+        mimeType: file.type 
+      });
       setUploadStatus('error');
       return;
     }
 
+    console.log('File accepted:', { 
+      fileName: file.name, 
+      extension: fileExtension, 
+      mimeType: file.type 
+    });
     setSelectedFile(file);
     setUploadStatus('success');
   };
