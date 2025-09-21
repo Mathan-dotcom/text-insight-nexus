@@ -2,10 +2,13 @@ import { useState } from "react";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { AnalysisResults } from "@/components/AnalysisResults";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileSearch, Sparkles } from "lucide-react";
+import { ArrowLeft, FileSearch, Sparkles, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const Upload = () => {
+  const { user, signOut } = useAuth();
   const [analysis, setAnalysis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -37,16 +40,34 @@ const Upload = () => {
                 <h1 className="text-xl font-bold text-foreground">Legal Document Analyzer</h1>
               </div>
             </div>
-            {analysis && (
-              <Button
-                onClick={handleNewUpload}
-                variant="outline"
-                className="gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                Analyze New Document
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              {analysis && (
+                <Button
+                  onClick={handleNewUpload}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Analyze New Document
+                </Button>
+              )}
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <User className="h-4 w-4" />
+                      {user.email}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => signOut()}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
         </div>
       </header>
