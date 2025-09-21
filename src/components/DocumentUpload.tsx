@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Upload, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocumentUploadProps {
   onAnalysis: (result: any) => void;
@@ -60,30 +61,90 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
     setUploadStatus('uploading');
     
     try {
-      // Parse the document content directly
+      // Parse the document content
       let content = '';
       
       if (selectedFile.type === 'text/plain' || selectedFile.name.endsWith('.txt')) {
         content = await selectedFile.text();
       } else if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
-        // For PDF files, show a message that it's being processed
-        content = `PDF Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis PDF file has been uploaded for analysis. In a production environment, this would be processed using advanced PDF parsing to extract text, tables, and images.`;
+        content = `PDF Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis PDF file has been uploaded for analysis. Advanced parsing would extract text, tables, and images for comprehensive legal analysis.`;
       } else if (selectedFile.name.endsWith('.docx') || selectedFile.type.includes('wordprocessingml')) {
-        // For DOCX files, show a message that it's being processed
-        content = `Word Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis Word document has been uploaded for analysis. In a production environment, this would be processed to extract formatted text, tables, and embedded content.`;
+        content = `Word Document: ${selectedFile.name}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis Word document has been uploaded for analysis. Advanced parsing would extract formatted text, tables, and embedded content.`;
       } else {
-        // Try to read as text for other file types
         try {
           content = await selectedFile.text();
         } catch {
-          content = `Document: ${selectedFile.name}\nType: ${selectedFile.type || 'Unknown'}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis file format requires specialized parsing. Content analysis is based on file metadata.`;
+          content = `Document: ${selectedFile.name}\nType: ${selectedFile.type || 'Unknown'}\nSize: ${(selectedFile.size / 1024).toFixed(1)} KB\n\nThis file format requires specialized parsing for comprehensive analysis.`;
         }
       }
       
-      // Analyze the real content
-      const analysis = analyzeDocumentContent(content, selectedFile.name);
+      // First save document to storage and database
+      console.log('Uploading document to storage...');
+      const { data: { user } } = await supabase.auth.getUser();
       
-      onAnalysis(analysis);
+      if (!user) {
+        throw new Error('Please sign in to analyze documents');
+      }
+
+      // Upload file to Supabase storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error('Failed to upload document');
+      }
+
+      // Create document record in database
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: user.id,
+          file_name: selectedFile.name,
+          path: filePath,
+          bucket: 'documents',
+          size: selectedFile.size,
+          processing_status: 'processing',
+          parsed_content: content,
+          word_count: content.split(/\s+/).length
+        })
+        .select()
+        .single();
+
+      if (docError || !docData) {
+        console.error('Database insert error:', docError);
+        throw new Error('Failed to save document record');
+      }
+
+      console.log('Document saved, starting AI analysis...');
+
+      // Call AI analysis edge function
+      const { data: aiData, error: aiError } = await supabase.functions
+        .invoke('analyze-document', {
+          body: {
+            documentId: docData.id,
+            content: content
+          }
+        });
+
+      if (aiError) {
+        console.error('AI analysis error:', aiError);
+        throw new Error('Failed to analyze document with AI');
+      }
+
+      if (!aiData.success) {
+        console.error('AI analysis failed:', aiData.error);
+        throw new Error(aiData.error || 'AI analysis failed');
+      }
+
+      console.log('AI analysis completed:', aiData.analysis);
+      
+      onAnalysis(aiData.analysis);
       setUploadStatus('idle');
     } catch (error) {
       console.error('Error analyzing document:', error);
@@ -91,72 +152,6 @@ export const DocumentUpload = ({ onAnalysis, isAnalyzing }: DocumentUploadProps)
     }
   };
 
-  const analyzeDocumentContent = (content: string, fileName: string) => {
-    // Real content analysis
-    const words = content.split(/\s+/).filter(word => word.length > 0);
-    const wordCount = words.length;
-    
-    // Detect legal document type based on keywords
-    const contractKeywords = ['agreement', 'contract', 'parties', 'terms', 'conditions'];
-    const serviceKeywords = ['service', 'provider', 'client', 'perform'];
-    const ndaKeywords = ['confidential', 'non-disclosure', 'proprietary', 'secret'];
-    const employmentKeywords = ['employee', 'employer', 'employment', 'position', 'salary'];
-    
-    let legalCategory = "General Legal Document";
-    if (contractKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
-      if (serviceKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
-        legalCategory = "Service Agreement";
-      } else {
-        legalCategory = "Contract";
-      }
-    } else if (ndaKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
-      legalCategory = "Non-Disclosure Agreement";
-    } else if (employmentKeywords.some(keyword => content.toLowerCase().includes(keyword))) {
-      legalCategory = "Employment Agreement";
-    }
-
-    // Detect sensitive clauses
-    const sensitivePatterns = [
-      /liability.*limit/i,
-      /termination.*clause/i,
-      /intellectual.*property/i,
-      /confidential/i,
-      /non-compete/i,
-      /arbitration/i,
-      /indemnif/i,
-      /force.*majeure/i,
-      /governing.*law/i,
-      /automatic.*renewal/i
-    ];
-
-    const sensitiveClause: string[] = [];
-    sensitivePatterns.forEach(pattern => {
-      const matches = content.match(pattern);
-      if (matches) {
-        sensitiveClause.push(`${matches[0]} clause detected`);
-      }
-    });
-
-    // Generate summary based on actual content
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    const summary = sentences.slice(0, 3).join('. ').trim() + 
-                   (sentences.length > 3 ? '...' : '');
-
-    // Calculate confidence score based on content analysis quality
-    let confidenceScore = 70;
-    if (wordCount > 100) confidenceScore += 10;
-    if (sensitiveClause.length > 0) confidenceScore += 10;
-    if (legalCategory !== "General Legal Document") confidenceScore += 10;
-
-    return {
-      summary: summary || "Document content extracted successfully.",
-      wordCount,
-      legalCategory,
-      sensitiveClause: sensitiveClause.length > 0 ? sensitiveClause : ["No sensitive clauses detected"],
-      confidenceScore: Math.min(confidenceScore, 98),
-      fileName
-    };
-  };
 
   const removeFile = () => {
     setSelectedFile(null);
